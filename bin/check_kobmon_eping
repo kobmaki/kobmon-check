@@ -1,0 +1,49 @@
+#!/bin/bash
+# Author: Uwe Ebel (kobmaki, kobmaki @ aol.com)
+# Version: 1.0
+# Project: kobmon-check
+# Url: https://github.com/kobmaki/kobmon-check
+# Info: runs 5 ping packages in a short interval  200ms
+
+
+unset LANG
+aD=`ping -c 5 -w 9 -i 0.2 ${1} 2>&1`
+aRet=$?
+aOut="???"
+aD=`echo ${aD} | sed s/".*--- "//g`
+
+if [ ${aRet} -eq  1 ]; then
+# ping returns 1 if host not found, unreachable, error packages
+aRet=2;
+fi
+
+# OK, ping return 0, but maybe it contains error/duplicate package
+if [ ${aRet} -eq 0 ]; then
+
+ # have package loss   
+ [[ ! ${aD} =~ ' 0% packet loss' ]] && aRet=1
+
+ # have duplicate packages
+ [[ ${aD} =~ ' duplicate' ]] && aRet=1
+
+fi
+
+
+case ${aRet} in
+  0) aOut="OK - "${aD}
+  ;;
+
+  1) aOut="WARNING - "${aD}
+    ;;
+  
+  2) aOut="CRITICAL - "${aD}
+  
+   ;;
+  3) aOut="UNKNOWN - "${aD}
+    ;;
+  *) 
+    aOut="??? - "${aD}
+  ;;
+esac
+echo ${aOut}
+exit ${aRet}
