@@ -11,6 +11,11 @@ The project is maintained by Uwe Ebel (kobmaki) on [https://github.com/kobmaki/k
 
 You found the documention under [doc/](doc/) and start with page [documentation](doc/00-A-documentation.md).
 
+## What is inside the directories?
+* doc - contains documentation in markdown format
+* bin - everything to execute, like scripts, helper
+* conf - configuration files
+
 ## Contact
 For contact info look at page [contact](https://github.com/kobmaki/).
 
