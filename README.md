@@ -12,7 +12,7 @@ The project is maintained by Uwe Ebel (kobmaki) on [https://github.com/kobmaki/k
 You found the documention under [doc/](doc/) and start with page [documentation](doc/00-A-documentation.md).
 
 ## Contact
-For contact info look at page [contact](doc/00-D-contact.md).
+For contact info look at page [contact](https://github.com/kobmaki/).
 
 ## Copyright
 
