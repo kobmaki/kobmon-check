@@ -1,0 +1,118 @@
+#!/bin/bash
+# Author: Uwe Ebel (kobmaki, kobmaki @ aol.com)
+# Version: 1.0
+# Project: kobmon-check
+# Url: https://github.com/kobmaki/kobmon-check
+# Copyright: Uwe Ebel, GPLv2+
+
+
+# Helper function for DEBUG output
+function decho (){
+if [ "${DEBUG}" ]; then
+    echo $@
+fi
+}
+
+# Default no help
+HELP=""
+
+# Default no WARNING
+aWARNING=""
+
+# Default no CRITICAL
+aCRITICAL=""
+
+# some defaults
+aIP=
+aDOMAIN=
+aHostnameShort=
+
+# read options                                                                                                          
+while getopts "hisd" Option
+do
+  case $Option in
+
+    h)
+        HELP="Y"
+          ;;
+
+    s) aHostname=${OPTARG}
+	  ;;
+
+    i) aIP=${OPTARG}
+          ;;
+
+    d) aDOMAIN=${OPTARG}
+       ;;
+
+    *) CRITICAL=${CRITICAL}", UNSUPPORTER PARAMETER "${Option}
+          ;;
+
+      esac
+
+  decho "aOption:"${Option}":"${OPTARG}
+
+done
+
+showHELP () {
+cat <<EOF
+
+usage: $0  [-i A.IP.NUMBER.CHECK ] [-s SHORTNAME] [-d DOMAIN]
+
+EOF
+exit 1
+}
+
+if [[ ! -z ${HELP} ]]; then
+    showHELP
+fi
+
+# the default exit code is 0 (OK)
+aExit=0
+aHostnameShort=$(hostname -s)
+aHostnameDomain=$(hostname -d)
+aHostnameIp=$(hostname -i)
+
+decho "aHostnameIp:"${aHostnameIp}
+decho "aHostnameDomain:"${aHostnameDomain}
+decho "aHostnameIp:"${aHostnameIp}
+decho "aHostname:"${aHostnameShort}
+decho "aDOMAIN:"${aDOMAIN}
+decho "aIP:"${aIP}
+# check if the host has no domain
+if [ "${aHostnameDomain}" == "" ]; then
+    aWARNING=${aWARNING}" NODOMAIN"
+fi
+
+if [[ ! -z ${aDOMAIN} ]]; then
+    decho "check on domain"
+    [[ "${aHostnameDomain}" == "${aDOMAIN}" ]] || aCRITICAL=${aCRITICAL}" DOMAIN ("${aDOMAIN}")"
+    
+fi
+
+# check if the ip of host is a 127.x.x.x
+if expr  match ${aHostnameIp}  '127.' >/dev/null 2>/dev/null ; then
+aCRITICAL=${aCRITICAL}" IP starts with 127"
+fi
+
+# If a waring situation happens, then output the warning 
+if [[ "${aCRITICAL}"=="" && "${aWARNING}" != "" ]]; then
+    echo -n "HOSTNAME WARNING - "${aWARNING}
+    aExit=1
+fi
+
+# Now we write out 
+if [ "${aCRITICAL}" != "" ]; then
+    echo -n "HOSTNAME CRITICAL - "${aCRITICAL}
+    aExit=2
+fi
+
+# No critical, no warning..
+[[ -z ${aCRITICAL} && -z ${aWARNING} ]] && echo -n "OK"
+
+
+
+echo -n  " - "${aHostnameShort}", "${aHostnameDomain}", "${aHostnameIp}
+echo "|O2R: hs="${aHostnameShort}"; hd="${aHostnameDomain}"; hi="${aHostnameIp}
+
+exit ${aExit}
