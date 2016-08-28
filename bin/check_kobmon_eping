@@ -7,7 +7,67 @@
 
 
 unset LANG
-aD=`ping -c 5 -w 9 -i 0.2 ${1} 2>&1`
+CHECKNAME='EPING'
+# Some default parameters
+aHostIp=${aHostIp-localhost}
+aPackageCount=${aPackageCount-5}
+aPackageIntervall=${aPackageIntervall-0.2}
+aAction='check'
+
+# function for debug output
+decho (){
+    if [ "${DEBUG}" != "" ]; then
+	echo $@
+    fi
+}
+
+function output2pnp (){
+    local aOutput=$1
+    aReturn="PNP unavailable"
+}
+
+function showHelp(){
+    # something
+    cat <<EOF
+usage check_kobmon_eping [-h] [-H <hostname>] [-i <intervall>] [-w <warning percent>] [-c <critical percent>]
+ -h -- Show this help
+ -H -- required hostname or ip
+ -i -- intervall for the ping checks
+ -w -- percent of package for a warning
+ -c -- percent of package lost for a critical
+EOF
+}
+
+# read options
+while getopts "::h:H:i:C::g(ateway)::w::c:" Option
+do
+    case $Option in
+	h)
+	    decho "help"
+	    aAction='help'
+	    ;;
+	H) decho "option H for host   [OPTIND=${OPTIND}]";
+	   aHostIp=${OPTARG}
+	   ;;
+	w) aWarnPer=${OPTARG}
+	   ;;
+	c) aCritPer=${OPTARG}
+	   ;;
+	C) aPackageCount=${OPTARG}
+	   decho "aPackageCount:"${aPackageCount}
+	   ;;
+	g) aGateway=${OPTARG}
+	   ;;
+	i) aPackageIntervall=${OPTARG}
+	    ;;
+	*) CRITICAL=${CRITICAL}", UNSUPPORTER PARAMETER "${Option}
+	   ;;
+    esac
+done
+
+
+function runCheck(){
+aD=`ping -c ${aPackageCount} -w 9 -i ${aPackageIntervall} ${aHostIp} 2>&1`
 aRet=$?
 aOut="???"
 aD=`echo ${aD} | sed s/".*--- "//g`
@@ -30,20 +90,35 @@ fi
 
 
 case ${aRet} in
-  0) aOut="OK - "${aD}
+  0) aOut="OK ${aHostIp} - "${aD}
   ;;
 
-  1) aOut="WARNING - "${aD}
+  1) aOut="WARNING ${aHostIp} - "${aD}
     ;;
   
-  2) aOut="CRITICAL - "${aD}
+  2) aOut="CRITICAL ${aHostIp} - "${aD}
   
    ;;
-  3) aOut="UNKNOWN - "${aD}
+  3) aOut="UNKNOWN ${aHostIp} - "${aD}
     ;;
   *) 
-    aOut="??? - "${aD}
+    aOut="??? ${aHostIp} - "${aD}
   ;;
 esac
-echo ${aOut}
+echo ${CHECKNAME}" "${aOut}
 exit ${aRet}
+}
+
+
+case ${aAction} in
+    help)
+	showHelp
+	;;
+    check)
+	runCheck
+	;;
+    *)
+
+	;;
+esac
+
