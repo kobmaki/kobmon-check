@@ -1,0 +1,307 @@
+#!/bin/bash
+#
+# Project: kobmon-check
+# Author: Uwe Ebel
+# Version: 1.0
+# Url: https://github.com/kobmaki/kobmon-check
+# Copyright: Uwe Ebel, GPLv2+
+#
+# checks disk free via the command "stat"
+# and use "df" to find the mountpoint
+# 
+# Script tested under linux
+#
+# TODO: PNP Perfdata
+#
+# help from stat for filesystem
+# Valid format sequences for file systems:
+#  %a   Free blocks available to non-superuser
+#  %b   Total data blocks in file system
+#  %c   Total file nodes in file system
+#  %d   Free file nodes in file system
+#  %f   Free blocks in file system
+#  %C   SELinux security context string
+#  %i   File System ID in hex
+#  %l   Maximum length of filenames
+#  %n   File name
+#  %s   Block size (for faster transfers)
+#  %S   Fundamental block size (for block counts)
+#  %t   Type in hex
+#  %T   Type in human readable form
+
+
+# stat -f -L -c "%a,%b,%c,%d,%f,%i,%l,%s,%S,%t,%T" /
+# but we use the following order
+# stat -L -f -c "%b,%f,%a,%c,%d,%s,%S,%l,%i,%t,%T"
+
+# helper function for DEBUG output
+function decho (){
+if [ "${DEBUG}" != "" ]; then
+    echo $@
+fi
+}
+
+#
+# show the help
+#
+function showhelp(){
+
+echo -ne "using: "$0" " 
+cat <<EOF 
+-p /path/to/dir [-w <WARNING-IN-PERCENT>] [-c <CRITICAL-IN-PERCENT] [-h THIS-MESSAGE] [-x PATH-IS-MOUNTPOINT] [-s SNAPSHOTTECHNOLOGY]
+
+examples:
+  simple path 
+  $0 -p /home -w 30 -c 15
+
+  path must be a mountpoint
+  $0 -x -p /home -w 30 -c 15 
+
+  path is with snapshot technology   
+  $0 -s -p /home -w 28.5 -c 15
+EOF
+exit 1
+}
+
+#
+# little function to convert a number
+#
+function aConvertNumber100 (){
+    _Me=$1
+    _Me=${_Me}'00'
+    aPos=$(expr index ${_Me} . )
+
+    if [[ ! ${aPos} -eq 0 ]]; then
+	# add the 2 position 
+	aPos=$(( ${aPos} + 2 ))
+	# get the substring XY.uv
+	_Me=${_Me:0:${aPos}}
+	# remove .
+	_Me=${_Me/./}
+    fi
+    
+    echo ${_Me}
+}
+
+#
+# set the dot in number
+# 3 -> 00.03
+# 67 -> 00.67
+# 923 -> 09.23
+# 7812 -> 87.12
+# above 9999
+# 2345123 -> 23.45123
+function aConvertDot (){
+    [ $1 -gt 999 ] && echo -n ${1:0:2}'.'${1:2:4} && return
+    [ $1 -gt 99 ] && echo -n ${1:0:1}'.'${1:1:3} && return
+    [ $1 -gt 9 ] && echo -n '0'${1:0:0}'.'${1:0:2} && return
+    echo -n "0.0"$1
+}
+
+# default limit warn is 10 percent
+aWarnPer=10
+
+# default limit critical is 5 percent
+aCritPer=5 
+
+# Initialize help, no help
+HELP=""
+
+# Initialize warning message, no warning
+WARNING=""
+
+# Initialize critical message,  no critical
+CRITICAL=""
+
+# Default no path given
+aPATH=""
+
+# Default no check if path is mountpoint
+aPathIsMount=""
+
+# has snapshot technology, like netapp, then block free/avaible, inodes total free are 0
+SNAPSHOT=""
+
+# read options
+while getopts "Vhsxp:w:c:" Option
+do
+    case $Option in
+    p) 
+          aPATH=${OPTARG};
+          ;;
+    
+    V) echo "check_kobmon_disku Version 1.0"
+       exit 0;
+       ;;
+    
+    w) aWarnPer=${OPTARG};
+       ;;
+    
+    c) aCritPer=${OPTARG};
+       ;;
+    
+    h) HELP="Y"
+       ;;
+    
+    s) SNAPSHOT="Y"
+       ;;
+    
+    x)
+      aPathIsMount="Y"
+      ;;
+    
+    *) CRITICAL=${CRITICAL}", UNSUPPORTER PARAMETER "${Option}
+       ;;
+    
+    esac
+done
+
+# if no arguments, then show help
+if [ $# -eq 0 ]; then
+    HELP=YES
+fi
+
+# DEFAULT exit code is 0
+aExitCode=0
+
+if [ ! $HELP == "" ]; then
+    showhelp
+    exit 0
+fi
+
+myCHECK="DISKU"
+#aDIR=${1}
+aDIR=${aPATH}
+
+aSTAT=`unset LANG; stat -L -f -c "%b,%f,%a,%c,%d,%s,%S,%l,%i,%t,%T" ${aDIR} 2>/dev/null`
+
+if [[ $? -gt 0 ]]; then
+echo "CRITICAL "${myCHECK}" -  WRONG PATH OR NOT EXIST "${aDIR}
+exit 2
+fi
+
+
+aDF=`df -iP ${aDIR} 2>/dev/null| tail -1|sed s/" .* "/";dfm="/g`
+# show the df free"
+sDF=""`df -hP ${aDIR} 2>/dev/null| tail -1`;
+
+#aDFM=$(echo ${aDF}|sed 's/"*.;dfm="//g')
+aDFM=`df -iP ${aDIR} 2>/dev/null| tail -1|sed s/".* "//g`
+
+
+decho "aDF:"${aDF}
+decho "aDFM:"${aDFM}
+# read the values into an array
+OLD_IFS="$IFS"
+IFS=","
+vStat=( ${aSTAT} )
+IFS="$OLD_IFS"
+
+# show all values, only if debug is set
+for i in 0 1 2 3 4 5 6 7 8 9; do
+    decho "v${i}:"${vStat[${i}]}
+done
+
+# 
+
+decho "aWarnPer:"${aWarnPer}
+decho "aCritPer:"${aCritPer}
+
+#aWarnPer=
+aWarnPer=$( aConvertNumber100 ${aWarnPer} )
+aCritPer=$( aConvertNumber100 ${aCritPer} )
+
+
+decho "aWarnPer:"${aWarnPer}
+decho "aCritPer:"${aCritPer}
+aBlockTotal=${vStat[0]}
+aBlockFree=${vStat[1]}
+aBlockAvail=${vStat[2]}
+
+decho "aBlockTotal:"${aBlockTotal}
+decho "aBlockFree:"${aBlockFree}
+decho "aBlockAvail:"${aBlockAvail}
+
+# calculate the percentage
+# we us 100.00 without the dot
+aBlock=10000
+
+# 
+# 
+if [ ${aBlockTotal} -gt 0 ]; then
+    aBlock=$((${aBlockAvail}*10000 / ${aBlockTotal}))
+fi
+
+decho "aBlock:"${aBlock}
+decho "aWarnPer:"${aWarnPer}
+aNodeTotal=${vStat[3]}
+aNodeFree=${vStat[4]}
+
+cBlock=$( aConvertDot ${aBlock}  )
+cWarn=$( aConvertDot ${aWarnPer} )
+cCrit=$( aConvertDot ${aCritPer} )
+
+if [[ ${aCritPer} -gt ${aWarnPer} ]]; then
+   CRITICAL=${CRITICAL}" critical greater than warn in blocks, limit is "${cWarn}"% / "${cCrit}"%"
+fi
+
+
+
+if [ ${aBlock} -lt ${aWarnPer} ]; then
+    decho "a warn"
+    WARNING=${WARNING}" "${cBlock}"% blocks free, limit is ("${cWarn}"% / "${cCrit}"%), ${sDF}"
+fi
+
+if [  ${aBlock} -lt ${aCritPer} ]; then
+    decho "a crit"
+    CRITICAL=${CRITICAL}" "${cBlock}"% blocks free, limit is ("${cWarn}"% / "${cCrit}"%), ${sDF}"
+fi
+
+if [ ${aPathIsMount} ]; then
+  if [ ${aDIR} != ${aDFM} ]; then
+      decho "check-path-mount"
+      decho "aDir:"${aDIR}
+      decho "aDfm:"${aDFM}
+      CRITICAL=${CRITICAL}" not a mountpoint "${aDFM}
+  fi
+fi
+
+decho "aNodeTotal:"${aNodeTotal}
+decho "aNodeFree:"${aNodeFree}
+
+# fix if we have snapshot technology
+
+if [ "${SNAPSHOT}" != "" ]; then
+    WARNING=""
+    CRITICAL=""
+    aSNAPSHOT=" with snapshot,"
+fi
+
+if [ "${WARNING}" != "" ]; then aExitCode=1; fi
+
+if [ "${CRITICAL}" != "" ]; then aExitCode=2; fi
+
+
+
+case ${aExitCode} in
+0)
+        echo -n ${myCHECK}" OK - path "${aDIR}${aSNAPSHOT}" "${cBlock}"% free, limits ("${cWarn}"% / "${cCrit}"%), ${sDF}"
+;;
+1)
+        echo -n ${myCHECK}" WARNING - path "${aDIR}" - "${WARNING} #${DISK}
+        ;;
+2)
+        echo -n ${myCHECK}" CRITICAL - path ${aDIR} - "${CRITICAL}
+        ;;
+*)
+        echo -n ${myCHECK}" UNKNOWN - "
+        ;;
+esac
+
+
+
+# and performance values out
+echo '|krn:stat='${aSTAT}';dir='${aDIR}';dfs='${aDF}
+
+# exit with the defined exit code
+exit ${aExitCode} 
