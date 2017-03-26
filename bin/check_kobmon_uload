@@ -1,0 +1,36 @@
+#!/bin/bash
+# Autor: Uwe Ebel
+# Version: 1.0
+# Project: kobmon-check
+# Info: Get more loadinfos via "uptime"
+# This script must be in same directory like check_uload
+
+unset LANG
+aD=`uptime`
+aOut="???"
+# do the wrapper check for uload
+`dirname ${0}`/check_load $@ > /dev/null 2>/dev/null
+# this will be the return
+aExit=$?
+
+case ${aExit} in
+  0) aOut="ULOAD OK - "${aD}
+  ;;
+
+  1) aOut="ULOAD WARNING - "${aD}
+    ;;
+  2) aOut="ULOAD CRITICAL - "${aD}
+    ;;
+  3) aOut="ULOAD UNKNOWN - "${aD}
+    ;;
+  127) aOut="ULOAD WARNING - check_load not avaible, get only perfdata - "${aD}
+      aExit=1
+      ;;
+  *) 
+    aOut="??? - "${aD}" ("${aExit}")"
+  ;;
+esac
+
+# Print out the first line
+echo ${aOut}"|uload="${aD}
+exit ${aExit}
