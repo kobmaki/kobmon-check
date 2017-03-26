@@ -1,0 +1,225 @@
+#!/bin/bash
+# Author: Uwe Ebel (kobmaki @ aol com)
+# Project: kobmon-check https://github.com/kobmaki/kobmon-check/
+# Info: Gather stats for a process from /proc filesystem
+# Version: 0.1
+# It requires pstree
+#
+# TODO: PNP
+
+
+if [ ! $PROFILEREAD ]; then
+ test -r /etc/profile && . /etc/profile
+fi
+
+# helper function for debug output
+
+function decho (){
+if [ "${DEBUG}" ]; then
+    echo $@ >&2
+fi
+}
+
+# save path
+export PATH=/bin/:/usr/bin:$PATH
+
+# no language
+unset LANG
+
+# check if correct parameter given
+if [ $# -lt 2 ]; then
+echo "ERROR, missing arguments"
+echo "check_kobmon_prg --user=[username] --command=[command] --filter=[filter] --warn=[min:max] --critical=[min:max] --inkernel=[Y] --verbose=[verboselevel] --pid=[pidnumber] --ppid=[parentpidnumber]"
+echo "for example"
+echo "  check_kobmon_prg --user=nagios --command=java --filter=kobrrdnag-rrdspool"
+exit 255
+fi
+
+# Start read the parameter
+# parameter are accessable via <PARAMETERNAME>
+# ugly hack, but it works!
+
+until [ -z "$1" ]  # Until all parameters used up...
+   do
+    # where is the position of "--"
+    posEqual=-1
+    posMinusMinus=`expr index "${1}" 0--`
+    if [ "${posMinusMinus}" -gt "0" ]; then
+       # Position of equals "="
+       posEqual=`expr index "${1}" ${posMinusMinus}=`
+    fi
+    # (=) is greater then (--)
+    if [ "${posMinusMinus}" -lt "${posEqual}" ]; then
+    # start afert "--"
+    aPosA=2
+    # position bevor the next  (=)
+    let "aPosB = ${posEqual} - 3"
+    # set parameter with defined prefix arg_
+    aParam=arg_${1:${aPosA}:${aPosB}}
+    # next starting position after the  (=)
+    let "aPosA = ${posEqual} "
+    # aValue is the rest
+    aValue=${1:${aPosA}}
+    # set the variable='new value'
+    declare ${aParam}=${aValue}
+    fi
+    shift
+  done
+# End read the parameter
+
+
+# assign the parameter
+aUSER=$arg_user
+aCOMMAND=$arg_command
+aFILTER=$arg_filter
+aPPID=${arg_ppid-1}
+
+if [ "${aUSER}" == "" ]; then
+   echo "ERROR missing argument for user, try --user=aUserName"
+   exit 2
+fi
+
+if [ "${aCOMMAND}" == "" ]; then
+    echo "PRG ERROR - missing argument for command, try --command=aProgramm"
+    exit 2
+fi
+
+# check to make the filter the command
+if [ $# -gt 2 ]; then
+aFILTER=$3
+fi
+
+#set -x
+
+aWARNING=""
+aCRITICAL=""
+
+aWARN_PT_MIN=-1
+aWARN_PT_MAX=65000
+aCRIT_PT_MIN=${aWARN_PT_MIN}
+aCRIT_PT_MAX=${aWARN_PT_MAX}
+
+#set -x
+unset COLUMNS
+# now we try to identify the process, and we want only one
+#aPID=""`ps  -o "%P%uX%pY %a" h -C ${aCOMMAND} | tr -s "[:blank:]" " "  | grep "^ 1 ${aUSER} X" | grep "${aFILTER}"| sed -e s/'Y.*'//g -e s/.*X//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+#set -x
+
+# grep the process, candidates via pgrep exact name
+aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -x ${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+decho "aPID is:"${aPID}
+
+# 2nd try exakt but with name  like oracle pmon instance
+if [ "" == "${aPID}" ]; then
+aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x ${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+fi
+
+# 3nd try maybe fullpath, like sshd on debian 8
+if [ "" == "${aPID}" ]; then
+aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x .*/${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+fi
+
+# 3rd try exakt but with name
+if [ "" == "${aPID}" ]; then
+aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x ${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+fi
+
+#exit
+# only for WIP
+
+if [ $arg_pid ]; then
+aPID=$arg_pid
+fi
+
+decho "aEXP:"`expr index "${aPID}" ' ' `":"
+#`expr match "${aPID}" " "`
+#${aPID/' '/}
+#`expr index "${aPID}" " "` 
+# if pid empty, no process identify
+if [ "" == "${aPID}" ]; then
+    echo "PRG CRITICAL - nothing running with user/command/filter/parentpid  "${aUSER}"/"${aCOMMAND}"/"${aFILTER}"/"${aPPID};
+    exit 2
+fi
+
+# now checking if more a process match the user/command/filter
+# 
+
+if [  `expr index "${aPID}" " "` != "0" ]; then
+   echo "PRG CRITICAL - `echo ${aPID}| tr ' ' '\n' | wc -l` running - user/command/filter/parentpid  "${aUSER}"/"${aCOMMAND}"/"${aFILTER}"/"${aPPID}" - pids "${aPID}
+   exit 2
+fi
+
+
+decho "aPID:"$aPID
+
+#exit
+aSTAT=""`cat /proc/${aPID}/stat| sed s/".*) "//g`
+aSTATM="`cat /proc/${aPID}/statm`"
+decho "aSTATM:"${aSTAM}
+aSTATUS="`cat /proc/${aPID}/status| egrep '^Vm.*:|^Tgid:|^Pid:|^PPid:|^Uid:|^Gid:|^Threads:|^FDSize:|^voluntary:|^nonvoluntary:|^Stack:'| sed -e s/'^'/' '/g -e s/kb/" "/gi`"
+decho "aSTATUS:"${aSTATUS}
+aIO=""`cat /proc/${aPID}/io 2>/dev/null | tr "\n" " "`
+aOOM="`cat /proc/${aPID}/oom_adj /proc/${aPID}/oom_score 2>/dev/null| tr '\n' ' '| sed s/' $'/''/g`";
+aPROCESS_COUNT_COMMAND="`pstree -ap ${aPID}| grep ${aCOMMAND} | wc -l`"
+aPROCESS_COUNT_ALL="`pstree -ap ${aPID} |wc -l`"
+aPROCESS_COUNT_CHILD=${aPROCESS_COUNT_COMMAND}
+aTHREADS="`cat /proc/${aPID}/status | egrep '^Threads:' |  sed -e s/'.*:'/' '/g -e s/kb//gi| tr -d '[:blank:]'`"
+
+
+
+if [ "${aPROCESS_COUNT_COMMAND}" == "1" ]; then
+decho "looking for thread"
+# maybe threads
+aPROCESS_COUNT_CHILD="`cat /proc/${aPID}/status | egrep '^Threads:' |  sed -e s/'.*:'/' '/g -e s/kb//gi | tr -d '[:blank:]'`"
+decho "aPCC:'"${aPROCESS_COUNT_CHILD}"'"
+
+if [ "${aPROCESS_COUNT_CHILD}" == "" ]; then
+# fix, as we do not have threads 
+ aPROCESS_COUNT_CHILD=${aPROCESS_COUNT_COMMAND}
+echo >/dev/null
+fi 
+
+fi
+
+aUNAME_R="`uname -r`"
+#aPSCMD="ps -H -u "${aUSER}" -o %u%c%p%P%a"
+#aPSCMDRUN=""${aPSCMDRUN}"|grep '^"${aUSER}" nagios'"
+
+# fix, if no oom infos available
+if [ "${aOOM}" == "" ]; then
+    aOOM="-1 -1";
+fi
+
+
+decho "aPID:"${aPID}
+decho "aSTAT:"${aSTAT}
+decho "aUSER:"${aUSER}
+decho "aOOM:"${aOOM}
+
+#decho "aPSCMD:"${aPSCMD}
+#decho "aPSCMDRUN:"${aPSCMDRUN}
+
+
+echo -n "PRG "
+
+# What exit code should be have?
+aEXIT=0
+
+if [ "${aCRITICAL}" != "" ]; then
+echo -n "CRITICAL "${aCRITICAL}
+aEXIT=2
+fi
+
+if [ "${aWARNING}" != "" ]; then
+echo -n "WARNING "${aWARNING}
+aEXIT=1
+fi
+
+if [ "${aWARNING}${aCTITICAL}" == "" ]; then
+echo -n "OK "
+fi
+
+echo -n "- running proc/thread,user,command,pid,ppid,filter = "${aPROCESS_COUNT_COMMAND}/${aTHREADS}", "${aUSER}", "${aCOMMAND}", "${aPID}", "${aPPID},","${aFILTER}
+echo '|krn:prg=user='${aUSER}';command='${aCOMMAND}';processthreads='${aPROCESS_COUNT_COMMAND}','${aPROCESS_COUNT_ALL}','${aPROCESS_COUNT_CHILD}';uname='${aUNAME_R}';status='${aSTATUS}';oom='${aOOM}';io='${aIO}';stat='${aSTAT}';statm='${aSTATM}';filter='${aFILTER}
+
+exit ${aEXIT}
