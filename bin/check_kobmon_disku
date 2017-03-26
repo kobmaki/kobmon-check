@@ -8,10 +8,10 @@
 #
 # checks disk free via the command "stat"
 # and use "df" to find the mountpoint
-# 
+#
 # Script tested under linux
 #
-# TODO: PNP Perfdata
+# TODO: PNP Perfdata as it still used my own format
 #
 # help from stat for filesystem
 # Valid format sequences for file systems:
@@ -37,7 +37,7 @@
 # helper function for DEBUG output
 function decho (){
 if [ "${DEBUG}" != "" ]; then
-    echo $@
+    echo $@ 1>&2;
 fi
 }
 
@@ -45,19 +45,19 @@ fi
 # show the help
 #
 function showhelp(){
-
-echo -ne "using: "$0" " 
-cat <<EOF 
+echo "STILL WIP! NO CORRECT PERFDATA"
+echo -ne "using: "$0" "
+cat <<EOF
 -p /path/to/dir [-w <WARNING-IN-PERCENT>] [-c <CRITICAL-IN-PERCENT] [-h THIS-MESSAGE] [-x PATH-IS-MOUNTPOINT] [-s SNAPSHOTTECHNOLOGY]
 
 examples:
-  simple path 
+  simple path
   $0 -p /home -w 30 -c 15
 
   path must be a mountpoint
-  $0 -x -p /home -w 30 -c 15 
+  $0 -x -p /home -w 30 -c 15
 
-  path is with snapshot technology   
+  path is with snapshot technology
   $0 -s -p /home -w 28.5 -c 15
 EOF
 exit 1
@@ -72,14 +72,14 @@ function aConvertNumber100 (){
     aPos=$(expr index ${_Me} . )
 
     if [[ ! ${aPos} -eq 0 ]]; then
-	# add the 2 position 
+	# add the 2 position
 	aPos=$(( ${aPos} + 2 ))
 	# get the substring XY.uv
 	_Me=${_Me:0:${aPos}}
 	# remove .
 	_Me=${_Me/./}
     fi
-    
+
     echo ${_Me}
 }
 
@@ -98,11 +98,11 @@ function aConvertDot (){
     echo -n "0.0"$1
 }
 
-# default limit warn is 10 percent
+# default limit warn is 10 percent (10.00%)
 aWarnPer=10
 
-# default limit critical is 5 percent
-aCritPer=5 
+# default limit critical is 5 percent (5.00%)
+aCritPer=5
 
 # Initialize help, no help
 HELP=""
@@ -122,37 +122,46 @@ aPathIsMount=""
 # has snapshot technology, like netapp, then block free/avaible, inodes total free are 0
 SNAPSHOT=""
 
+
 # read options
-while getopts "Vhsxp:w:c:" Option
+while getopts "Vhsxp:w:c:O:" Option
 do
     case $Option in
-    p) 
+	p)
           aPATH=${OPTARG};
           ;;
-    
-    V) echo "check_kobmon_disku Version 1.0"
-       exit 0;
-       ;;
-    
-    w) aWarnPer=${OPTARG};
-       ;;
-    
-    c) aCritPer=${OPTARG};
-       ;;
-    
-    h) HELP="Y"
-       ;;
-    
-    s) SNAPSHOT="Y"
-       ;;
-    
-    x)
-      aPathIsMount="Y"
-      ;;
-    
-    *) CRITICAL=${CRITICAL}", UNSUPPORTER PARAMETER "${Option}
-       ;;
-    
+
+	V)
+	    echo "check_kobmon_disku Version 1.0 (kobmon-check 0.1)"
+	    exit 0;
+	    ;;
+
+	w)
+	    aWarnPer=${OPTARG};
+	    ;;
+
+	c)
+	    aCritPer=${OPTARG};
+	    ;;
+
+	h)
+	    HELP="Y"
+	    ;;
+
+	s)
+	    SNAPSHOT="Y"
+	    ;;
+
+	x)
+	    aPathIsMount="Y"
+	    ;;
+
+	O) # do old output 4 rrd, typical not used
+	    aO4R="Y"
+	    ;;
+	*)
+	    CRITICAL=${CRITICAL}", UNSUPPORTER PARAMETER "${Option}
+	    ;;
     esac
 done
 
@@ -176,8 +185,8 @@ aDIR=${aPATH}
 aSTAT=`unset LANG; stat -L -f -c "%b,%f,%a,%c,%d,%s,%S,%l,%i,%t,%T" ${aDIR} 2>/dev/null`
 
 if [[ $? -gt 0 ]]; then
-echo "CRITICAL "${myCHECK}" -  WRONG PATH OR NOT EXIST "${aDIR}
-exit 2
+    echo "CRITICAL "${myCHECK}" -  WRONG PATH OR NOT EXIST "${aDIR}
+    exit 2
 fi
 
 
@@ -202,7 +211,7 @@ for i in 0 1 2 3 4 5 6 7 8 9; do
     decho "v${i}:"${vStat[${i}]}
 done
 
-# 
+#
 
 decho "aWarnPer:"${aWarnPer}
 decho "aCritPer:"${aCritPer}
@@ -226,8 +235,8 @@ decho "aBlockAvail:"${aBlockAvail}
 # we us 100.00 without the dot
 aBlock=10000
 
-# 
-# 
+#
+#
 if [ ${aBlockTotal} -gt 0 ]; then
     aBlock=$((${aBlockAvail}*10000 / ${aBlockTotal}))
 fi
@@ -268,7 +277,8 @@ fi
 
 decho "aNodeTotal:"${aNodeTotal}
 decho "aNodeFree:"${aNodeFree}
-
+decho "WARNING:"${WARNING}
+decho "SNAPSHOT:"${SNAPSHOT}
 # fix if we have snapshot technology
 
 if [ "${SNAPSHOT}" != "" ]; then
@@ -277,9 +287,15 @@ if [ "${SNAPSHOT}" != "" ]; then
     aSNAPSHOT=" with snapshot,"
 fi
 
-if [ "${WARNING}" != "" ]; then aExitCode=1; fi
+decho "WARNING:"${WARNING}
+if [ "${WARNING}" != "" ]; then
+    aExitCode=1;
+fi
 
-if [ "${CRITICAL}" != "" ]; then aExitCode=2; fi
+decho "CRITICAL:"${CRITICAL}
+if [ "${CRITICAL}" != "" ]; then
+    aExitCode=2;
+fi
 
 
 
@@ -298,10 +314,28 @@ case ${aExitCode} in
         ;;
 esac
 
+# set perfdata
+aO2R='stat='${aSTAT}';dir='${aDIR}';dfs='${aDF}
+decho "aO2R:"${aO2R}
 
+function string2int {
+echo $@ | md5sum
+}
+# now we split all the output to prepare for pnp
+OLD_IFS="$IFS"
+IFS=";"
+bar=( $aO2R )
+IFS="$OLD_IFS"
+decho "bar0:"${bar[0]} # stat=
+#bar[0]=""string2int ${bar[0]}
+decho "bar0.1:"${bar[0]}
+
+decho ${bar[1]} # dir=
+decho ${bar[2]} #dfs=
+decho ${bar[3]} #dfm=
 
 # and performance values out
-echo '|krn:stat='${aSTAT}';dir='${aDIR}';dfs='${aDF}
+echo "|krn:"${aO2R}
 
 # exit with the defined exit code
-exit ${aExitCode} 
+exit ${aExitCode}
