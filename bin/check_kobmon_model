@@ -1,0 +1,272 @@
+#!/bin/bash
+# Author: Uwe Ebel (kobmaki @ aol com)
+# Project: kobmon-check, https://github.com/kobmaki/kobmon-check/
+# Version: 1.0
+# Info: checks the machine type
+# 
+
+aOK=""
+aWARING=""
+aCRITICAL=""
+aUNKNOWN=""
+aCHECKNAME="MODEL"
+aCHECKFQN="check_kobmon_model"
+aCHECKVERSION="0.1"
+
+aMACHINEFOUND="UNKNOWN"
+
+function decho (){
+if [ "${DEBUG}" != "" ]; then
+    echo $@ 1>&2
+fi
+}
+
+
+#set -x
+aMACHINE_ANY="ANY"
+aPHP_ANY="0"
+
+aMACHINE_UNKNOWN="UNKOWN"
+aPHP_UNKNOWN="1"
+
+aMACHINE_HP="HP"
+aPNP_HP="2"
+
+aMACHINE_DELL="DELL"
+aPNP_DELL="3"
+
+aMACHINE_VMWARE="VMWARE"
+aPNP_MVMWARE="4"
+
+aMACHINE_IBM="IBM"
+aPNP_IBM="5"
+
+aMACHINE_CISCO="CISCO"
+aPNP_CISCO="6"
+
+aMACHINE_FUJITSU="FUJITSU"
+aPNP_FUJITSU="7"
+
+aMACHINE_XEN="XEN"
+aPNP_XEN="8"
+
+aMACHINE_DOCKER="DOCKER"
+aPNP_DOCKER="9"
+
+# what do we search for default?
+aMACHINE=""${aMACHINE_ANY}
+
+aHELP=""
+
+while getopts "Vt:h" Option
+do
+    case $Option in
+    t)
+	  decho "aMACHINE"
+          aMACHINE=${OPTARG};
+          ;;
+
+    V) echo "${aCHECKFQN} ${aCHECKVERSION} (kobmon-check 0.1)"
+       exit 0;
+       ;;
+
+    h) aHELP="1"
+       ;;
+
+    *) CRITICAL=${CRITICAL}", UNSUPPORTER PARAMETER "${Option}
+       ;;
+
+    esac
+done
+
+aLSPCI="/sbin/lspci"
+# Path to DMI vendor info
+aDMISYSVENDOR="/sys/class/dmi/id/sys_vendor"
+aDMIVENDOR="" # Default empty
+
+# Path to hypervisor
+aHYPERVISORSYSTYPE="/sys/hypervisor/type"
+aHYPERVISOR="" # Default empty
+
+# check if lspci exist
+which lspci 1>/dev/null 2> /dev/null && aLSPCI=""`which lspci`
+
+
+if [ "${aHELP}" != "" ]; then
+echo "help: try "${0}" [-t TYPE] [-h] [-V]"
+echo "-t define the type from "${aMACHINE_ANY}"|"${aMACHINE_HP}"|"${aMACHINE_DELL}"|"${aMACHINE_VMWARE}"|"${aMACHINE_XEN}"|"${aMACHINE_IBM}"|"${aMACHINE_CISCO}"|"${aMACHINE_FUJITSU}"|"${aMACHINE_DOCKER}
+echo "-h shows help"
+echo "-V shows the version"
+exit 0
+fi
+
+# convert to upper case
+aMACHINESEARCH=""$(echo ${aMACHINE} |tr "[:lower:]" "[:upper:]")
+decho "aMACHINESEARCH:"${aMACHINESEARCH}
+
+if [ -r ${aDMISYSVENDOR} ]; then
+    aDMIVENDOR=""$(cat ${aDMISYSVENDOR} | sed -e s/" .*"//g -e s/";.*"//g -e s/",.*"//g | tr "[:lower:]" "[:upper:]")
+    decho "aDMIVENDOR="${aDMIVENDOR}
+fi
+
+if [ -r ${aHYPERVISORSYSTYPE} ]; then
+    aHYPERVISOR=""$(cat ${aHYPERVISORSYSTYPE}| sed -e s/" .*"//g -e s/";.*"//g -e s/",.*"//g | tr "[:lower:]" "[:upper:]")
+   decho "aHYPERVISOR="${aHYPERVISOR}
+fi
+
+function foundMachineExit() {
+ echo foundMachineExit
+}
+
+function checkHP(){
+#  aHP=""`/sbin/lspci | grep -i "ilo"| wc -l`
+    if [ "${aDMIVENDOR}" == "${aMACHINE_HP}" ]; then return 1; fi
+    aHP=""`${aLSPCI} 2>/dev/null | grep -i "Hewlett-Packard Company Integrate"| wc -l`
+  
+  if [ $aHP -gt 0 ]; then
+      return 1
+  fi
+
+  return 0
+}
+
+
+function checkVMware() {
+	 aVmware=""`${aLSPCI} 2>/dev/null | grep -i "vmware svg"| wc -l`
+	 if [ $aVmware -eq 0 ]; then 
+	     return 0
+	 fi
+	  return 1
+}
+
+function checkXEN() {
+         if [ "${aHYPERVISOR}" == "${aMACHINE_XEN}" ]; then 
+	     return 1; 
+	 fi
+
+         return 0
+}
+
+function checkIBM() {
+        if [ "${aDMIVENDOR}" == "${aMACHINE_IBM}" ]; then return 1; fi
+
+        aIbm=""`${aLSPCI} 2>/dev/null | grep -i "IBM"| wc -l`
+        if [ $aIbm -eq 0 ]; then
+            return 0;
+        fi
+        return 1;
+}
+
+function checkFUJITSU() {
+        if [ "${aDMIVENDOR}" == "${aMACHINE_FUJITSU}" ]; then return 1; fi
+
+        return 0;
+}
+
+function checkDELL() {
+        decho "in checkDELL"
+	if [ "${aDMIVENDOR}" == "${aMACHINE_DELL}" ]; then return 1; fi
+
+        aDell=""`cat /proc/scsi/scsi 2>/dev/null | grep -i dell | wc -l`
+        if [ $aDell -eq 0 ]; then
+            return 0
+        fi
+        return 1
+}
+
+function checkCISCO() {
+       decho "in checkCISCO"
+       aCisco=""`${aLSPCI} 2>/dev/null| grep -i 'Cisco Systems Inc' | wc -l ` 
+       if [ $aCisco -gt 0 ]; then
+            return 1;
+        fi
+        return 0;
+}
+
+function checkDOCKER() {
+    decho "in checkDOCKER"
+    if [ ! -f /.dockerenv ]; then
+	return 0
+    fi
+
+    return 1
+}
+
+
+#check HP
+checkHP
+if [[ $?  -eq 1 ]]; then
+   aMACHINEFOUND=${aMACHINE_HP} 
+fi
+# check VMware
+checkVMware
+if [[ $? -eq 1 ]]; then
+       aMACHINEFOUND=${aMACHINE_VMWARE}
+fi
+
+# check XEN
+checkXEN
+if [[ $? -eq 1 ]]; then
+    aMACHINEFOUND=${aMACHINE_XEN}
+fi
+
+# check IBM
+checkIBM
+if [[ $? -eq 1 ]]; then
+    aMACHINEFOUND=${aMACHINE_IBM}
+fi
+
+# check VMware
+checkVMware
+if [[ $? -eq 1 ]]; then
+    aMACHINEFOUND=${aMACHINE_VMWARE}
+fi
+
+
+# check DELL
+checkDELL
+if [[ $? -eq 1 ]]; then
+    aMACHINEFOUND=${aMACHINE_DELL}
+fi
+
+# check CISCO
+checkCISCO
+if [[ $? -eq 1 ]]; then
+    aMACHINEFOUND=${aMACHINE_CISCO}
+fi
+
+# check FUJITSU
+checkFUJITSU
+if [[ $? -eq 1 ]]; then
+    aMACHINEFOUND=${aMACHINE_FUJITSU}
+fi
+
+# check DOCKER
+checkDOCKER
+if [[ $? -eq 1 ]]; then
+    aMACHINEFOUND=${aMACHINE_DOCKER}
+fi
+
+decho "aMACHINEFOUND:"${aMACHINEFOUND}
+decho "aMACHINESEARCH:"${aMACHINESEARCH}
+
+if [ "${aMACHINEFOUND}" != "${aMACHINESEARCH}" ]; then
+    aCRITICAL="CRITICAL "
+fi
+
+# fix if any machine was search for
+if [ "${aMACHINESEARCH}" == "${aMACHINE_ANY}" ]; then
+    aCRITICAL="" 
+fi
+
+
+if [ $aCRITICAL ]; then
+    echo ${aCRITICAL}" "${aCHECKNAME}" - "${aMACHINEFOUND}" found, but should be "${aMACHINESEARCH}"|search="${aMACHINESEARCH}";found="${aMACHINEFOUND}
+    exit 2
+fi
+
+
+
+echo "OK "${aCHECKNAME}" - "${aMACHINEFOUND}" found, and should be "${aMACHINESEARCH}"|search="${aMACHINESEARCH}";found="${aMACHINEFOUND}
+
+exit 0
