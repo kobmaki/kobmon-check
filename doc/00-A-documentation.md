@@ -16,3 +16,5 @@ Checks the load and gives more infos the the classic check_load.
 Checks the used timeserver.
 ## [check_kobmon_prg](40-A-check_kobmon_prg)
 Checks for a programm under linux.
+## [check_kobmon_prg](40-A-check_kobmon_vmstat.md)
+Checks OS with the command vmstat under linux.

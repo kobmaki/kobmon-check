@@ -1,0 +1,213 @@
+#!/bin/bash
+# Author: Uwe Ebel
+# Version: 0.9
+# Project: kobmon-check
+# Info: 
+# Example:
+#
+# check_kobmon_vmstat => vmstat 10 2
+# check_kobmon_vmstat --DELAY=15 => vmstat 15 2
+#
+# TODO: options, PNP 
+
+function decho (){
+if [ "${DEBUG}" != "" ]; then
+    echo $@ 1>&2
+fi
+}
+
+
+# Default we look into a time interval of 10 seconds
+DELAY=10
+
+# Default no help
+HELP=""
+# Default no warning
+WARNING=""
+
+# Default no critical
+CRITICAL=""
+
+
+# Default no  IDLE check
+WARNidle=-1
+CRITidle=-1
+
+# DEFAULT WAIT CHECK
+WARNwait=15
+CRITwait=30
+VMSTAT=/usr/bin/vmstat
+
+if [ ! -f ${VMSTAT} ]; then
+# ok maybe vmstat is in /bin/vmstat
+VMSTAT=/bin/vmstat
+fi
+
+# prefix path
+#export PATH=/usr/bin:/bin:$PATH
+# check if vmstat exist and is executeable
+if [ ! -f ${VMSTAT} ]; then
+    echo "UNKNOWN, no "${VMSTAT}" available"
+exit 4
+fi
+
+if [ ! -x ${VMSTAT} ]; then
+    echo "UNKNOWN, "${VMSTAT}" not executeable"
+    exit 4
+fi
+
+
+# read parameter
+until [ -z "$1" ]  # Until all parameters used up...
+    do
+#  echo "1:"${1}
+     # wo ist der --
+     posGleich=-1
+     posStrichstrich=`expr index "${1}" 0--`
+     if [ "${posStrichstrich}" -gt "0" ]; then
+        # Position gleich ermitteln
+        posGleich=`expr index "${1}" ${posStrichstrich}=`
+     fi
+     # (=) ist groesser als (--)
+     if [ "${posStrichstrich}" -lt "${posGleich}" ]; then
+     # nach dem -- anfangen
+	 aPosA=2
+     # bis kurz vor dem (=)
+	 let "aPosB = ${posGleich} - 3"
+     # Parameter setzten
+	 aParam=${1:${aPosA}:${aPosB}}
+     # neuer Anfang nach dem (=)
+	 let "aPosA = ${posGleich} "
+     # Value ist der Rest
+	 aValue=${1:${aPosA}}
+     # Variable=Wert bekanntmachen
+	 declare ${aParam}=${aValue}
+     fi
+     shift
+   done
+
+if [ ${HELP} ]; then
+echo "help for "${0}
+echo " ${0} [ [--HELP=ANY] [--WARNidle={-1..101}] [--CRITidel={-1..101}] ..."
+echo "Parameterinfos"
+echo "HELP: shows this help"
+echo "DELAY: How long should the delay between two messure points,, Default=10"
+echo "WARNidle: limit for idle warn, Default=-1"
+echo "CRITidle: limit for idle critical, Default=-1"
+echo "WARNwait: "
+echo "CRITwait: "
+echo ""
+echo "Examples:"
+echo "           ${0} --WARNidle=30 --CRITidle=10"
+echo "will give a a warning when idle is below 30 percent"
+echo "and a critical below 10"  
+exit 10
+fi
+
+
+aReturn=`${VMSTAT} -V | sed s/".* "//`" "`${VMSTAT} $DELAY 2 | tail -1  | sed -e s/$/" "/g -e s/"^ "//g`
+
+if  [ $DEBUG ] ; then
+    echo "DELAY="${DELAY};
+    echo "HELP"=${HELP}
+fi
+ 
+# position of st(olen)
+aR[17]=0
+j=0
+for i in ${aReturn}; do
+    aR[${j}]=$i;
+	decho "--"
+	decho "j:"$j;
+	decho "i:"$i;
+	let "j=$j+1";
+#echo $j;
+done
+aVmstatVersion=${aR[0]}
+aUser=${aR[13]}
+aSystem=${aR[14]}
+aIdle=${aR[15]}
+aWait=${aR[16]}
+aStolen=${aR[17]}
+
+let aSUM_USIWS=0+${aUser}+${aSystem}+${aIdle}+${aWait}+${aStolen}
+
+# Info for the check
+aUsSyIdWaSt='us('${aUser}')/sy('${aSystem}')/id('${aIdle}')/wa('${aWait}')/st('${aStolen}') - ('${aVmstatVersion}')'
+
+# user/system/idle/wait/stolen
+
+decho "Idle:"${aIdle};
+decho "WARNidle:"${WARNidle}
+decho "CRITidle:"${CRITidle}
+
+decho "Wait:"${aWait};
+decho "WARNwait:"${WARNwait}
+decho "CRITwait:"${CRITwait}
+
+# check for idle
+if [ ${aIdle} -le ${WARNidle} ]; then
+    if [ ${aIdle} -le ${CRITidle} ]; then
+	CRITICAL=${CRITICAL}" idle="${aIdle}
+    else
+	WARNING=${WARNING}" idle="${aIdle}
+    fi
+fi
+
+# check for wait
+if [ ${aWait} -ge ${WARNwait} ]; then
+    if [ ${aWait} -ge ${CRITwait} ]; then
+        CRITICAL=${CRITICAL}" wait="${aWait}
+    else
+        WARNING=${WARNING}" wait="${aWait}
+    fi
+fi
+
+# check for stolen
+if [ ${aStolen} -gt 0 ]; then
+    CRITICAL=${CRITICAL}" stolen="${aStolen}
+fi
+
+
+if [[ ${aSUM_USIWS} -lt 99  ||  ${aSUM_USIWS} -gt 101 ]]; then
+    WARNING=${WARNING}" sum is "${aSUM_USIWS}
+fi
+
+if [[ ${aSUM_USIWS} -lt 98  ||  ${aSUM_USIWS} -gt 102 ]]; then
+    CRITICAL=${CRITICAL}" missing tics sum=${aSUM_USIWS}"
+fi
+
+
+
+decho "WARNING:"${WARNING}
+decho "CRITICAL:"${CRITICAL}
+
+
+aExitCode=0;
+if [ "${WARNING}" ]; then
+    aExitCode=1
+fi
+
+if [ "${CRITICAL}" ]; then
+    aExitCode=2
+fi
+
+case ${aExitCode} in
+1) 
+	echo -n "WARNING VMSTAT -"${WARNING}" - "
+	;;
+2) 
+	echo -n "CRITICAL VMSTAT -"${CRITICAL}" - "
+
+	;;
+*)
+	echo -n "OK VMSTAT - "
+
+;;
+esac 
+
+
+echo ${aUsSyIdWaSt}"|krn:vmstat="${aReturn}
+
+exit ${aExitCode}
+
