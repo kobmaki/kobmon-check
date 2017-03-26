@@ -10,11 +10,11 @@ This check is for checking hostnames and things around it.
 Checks the diskusage. Enables limit in percentage and additional infos around the used filesystem.
 ## [check_kobmon_eping](40-A-check_kobmon_eping.md)
 Extend and faster ping. It is based on the os ping.
-## [check_kobmon_uload](40-A-check_kobmon_uload)
+## [check_kobmon_uload](40-A-check_kobmon_uload.md)
 Checks the load and gives more infos the the classic check_load.
 ## [check_kobmon_ntpq](40-A-check_kobmon_ntpq.md)
 Checks the used timeserver.
-## [check_kobmon_prg](40-A-check_kobmon_prg)
+## [check_kobmon_prg](40-A-check_kobmon_prg.md)
 Checks for a programm under linux.
 ## [check_kobmon_prg](40-A-check_kobmon_vmstat.md)
 Checks OS with the command vmstat under linux.
