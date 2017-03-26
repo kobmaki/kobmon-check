@@ -31,6 +31,6 @@ Checks the used timeserver.
 
 Checks for a programm under linux.
 
-## [check_kobmon_prg](40-A-check_kobmon_vmstat.md)
+## [check_kobmon_vmstat](40-A-check_kobmon_vmstat.md)
 
 Checks OS with the command vmstat under linux.
