@@ -1,0 +1,115 @@
+#!/bin/bash
+# Version: 0.1
+# Autor: Uwe Ebel (kobmaki @ aol com) 
+# Info: Check the ntp-Service if a time-server is available and used
+# 
+# REQUIRE CODE AND DOC IMPROVEMENT
+
+NTPQ=/usr/sbin/ntpq
+NTPQOPTION="-pn "
+NTPPOS=1
+aRETURN="nix"
+
+# Default no warning message
+aWARNING=""
+# Default no critical message
+aCRITICAL=""
+# Default exit is OK (0)
+aEXIT=0
+
+
+#echo "${1}"
+case "${1}" in
+1)
+aReturn=`${NTPQ} -pn 2>/dev/null |  grep -v "refid" | grep -v "=="| head -2| tail -1| xargs`
+;;
+2)
+NTPPOS=${1}
+aReturn=`${NTPQ} -pn 2>/dev/null|  grep -v "refid" | grep -v "=="| head -3 | tail -1|xargs`
+;;
+3) 
+NTPPOS=${1}
+aReturn=`${NTPQ} -pn 2>/dev/null| grep -v "refid" | grep -v "=="| head -4 | tail -1|xargs`
+;;
+4)
+NTPPOS=${1}
+aReturn=`${NTPQ} -pn 2>/dev/null| grep -v "refid" | grep -v "=="| head -5 | tail -1| xargs`
+;;
+
+5)
+NTPPOS=${1}
+aReturn=`${NTPQ} -pn 2>/dev/null| grep -v "refid" | grep -v "=="| head -6 | tail -1|xargs`
+
+;;
+
+6) 
+NTPPOS=${1}
+aReturn=`${NTPQ} -pn 2>/dev/null | grep -v "refid" | grep -v "=="| head -7 | tail -1|xargs`
+
+;;
+
+t)
+NTPPOS=${1}
+aReturn="*192.168.201.221  192.168.201.220   4 u  64m  68m  377    0.952   16.618   0.740"
+;;
+ *) 
+# OK, so we watch the used time 
+NTPPOS=1
+aReturn=`${NTPQ} -pn 2>/dev/null|  grep "^*"| head -1`
+#     remote           refid      st t when poll reach   delay   offset  jitter
+#==============================================================================
+# 127.127.1.0     .LOCL.          10 l    3   64  377    0.000    0.000   0.001
+#*192.168.201.221  192.168.201.220   4 u  64m  68m  377    0.952   16.618   0.740
+#+192.168.150.221   192.168.201.220   4 u  60m  68m  377    0.917   26.281   4.664
+
+#aReturn="*192.168.201.221  192.168.201.220   4 u  64m  68m  377    0.952   16.618   0.740"
+;;
+
+esac
+
+aREMOTE=" no remote"
+aREFID="no refid"
+aST="--"
+aJitter="--"
+
+if [ "${aReturn}" == "" ]; then
+    aCRITICAL=" no timeserver used, maybe no ntp running"
+fi
+
+
+if [ "${aReturn}" != "" ]; then
+#
+aREMOTE=`echo ${aReturn} | awk -F" " '{print $1}'`
+aREFID=`echo ${aReturn} | awk -F" " '{print $2}'`
+aST=`echo ${aReturn} | awk -F" " '{print $3}'`
+aJITTER=`echo ${aReturn} | awk -F" " '{print $10}'`
+
+fi
+
+#GREPFILTER="| tail -${NTPPOS}|head -1"
+#aCOMMAND="${NTPQ} ${NTPQOPTION} ${GREPFILTER}"
+#aReturn=`${aCOMMAND}`
+#aReturn=`${NTPQ} -pn | tail -1|head -1`
+#aReturn=`${NTPQ} -pn | tail -${NTTPPOS}| head -1"` 
+echo -n "NTPQ "
+
+
+
+if [[ "${aCRITICAL}" == "" && "${aWARNING}" != "" ]]; then
+    echo -n "WARNING - "${aWARNING}
+    aEXIT=1
+fi
+
+
+if [ "${aCRITICAL}" != "" ]; then
+    echo -n "CRITICAL - "${aCRITICAL}
+    aEXIT=2
+fi
+
+if [ "${aCRITICAL}${aWARNING}" == "" ]; then
+   echo -n "OK - NTP sync with "${aREMOTE}" ("${aST}"/"${aJITTER}")"
+fi
+
+echo "|krn:ntpqp=${aReturn}"
+#${aCOMMAND}
+exit ${aEXIT}
