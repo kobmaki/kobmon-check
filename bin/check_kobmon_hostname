@@ -9,9 +9,14 @@
 # Helper function for DEBUG output
 function decho (){
 if [ "${DEBUG}" ]; then
-    echo $@
+    echo $@ 1>&2;
 fi
 }
+
+#
+aCHECKNAME="HOSTNAME"
+aCHECKFQN="check_kobmon_hostname"
+aCHECKVERSION="0.1"
 
 # Default no help
 HELP=""
@@ -28,10 +33,13 @@ aDOMAIN=
 aHostnameShort=
 
 # read options                                                                                                          
-while getopts "hisd" Option
+while getopts "Vhi:sd:" Option
 do
   case $Option in
 
+    V)
+	  VERSION="Y"
+	  ;;
     h)
         HELP="Y"
           ;;
@@ -54,14 +62,23 @@ do
 
 done
 
-showHELP () {
+function showVERSION () {
+echo "${aCHECKFQN} ${aCHECKVERSION} (kobmon-check)"
+exit 0
+}
+
+function showHELP () {
 cat <<EOF
-
-usage: $0  [-i A.IP.NUMBER.CHECK ] [-s SHORTNAME] [-d DOMAIN]
-
+usage: $0  [-i A.IP.NUMBER.CHECK ] [-s SHORTNAME] [-d DOMAIN] [-V]
+If no option is given, then only the information is collect.
 EOF
 exit 1
 }
+
+if [[ ! -z ${VERSION} ]]; then
+    showVERSION
+fi
+
 
 if [[ ! -z ${HELP} ]]; then
     showHELP
@@ -69,41 +86,49 @@ fi
 
 # the default exit code is 0 (OK)
 aExit=0
+
+# fetch some infos for hostname short
 aHostnameShort=$(hostname -s)
+
+# hostname as domain 
 aHostnameDomain=$(hostname -d)
+
+# ip for the hostname
 aHostnameIp=$(hostname -i)
 
+# debug output
 decho "aHostnameIp:"${aHostnameIp}
 decho "aHostnameDomain:"${aHostnameDomain}
 decho "aHostnameIp:"${aHostnameIp}
 decho "aHostname:"${aHostnameShort}
 decho "aDOMAIN:"${aDOMAIN}
 decho "aIP:"${aIP}
+
 # check if the host has no domain
 if [ "${aHostnameDomain}" == "" ]; then
     aWARNING=${aWARNING}" NODOMAIN"
 fi
 
+# check if the domain is correct
 if [[ ! -z ${aDOMAIN} ]]; then
     decho "check on domain"
     [[ "${aHostnameDomain}" == "${aDOMAIN}" ]] || aCRITICAL=${aCRITICAL}" DOMAIN ("${aDOMAIN}")"
-    
 fi
 
 # check if the ip of host is a 127.x.x.x
 if expr  match ${aHostnameIp}  '127.' >/dev/null 2>/dev/null ; then
-aCRITICAL=${aCRITICAL}" IP starts with 127"
+    aCRITICAL=${aCRITICAL}" IP starts with 127"
 fi
 
 # If a waring situation happens, then output the warning 
-if [[ "${aCRITICAL}"=="" && "${aWARNING}" != "" ]]; then
-    echo -n "HOSTNAME WARNING - "${aWARNING}
+if [[ "${aCRITICAL}" == "" && "${aWARNING}" != "" ]]; then
+    echo -n "${aCHECKNAME} WARNING - "${aWARNING}
     aExit=1
 fi
 
 # Now we write out 
 if [ "${aCRITICAL}" != "" ]; then
-    echo -n "HOSTNAME CRITICAL - "${aCRITICAL}
+    echo -n "${aCHECKNAME} CRITICAL - "${aCRITICAL}
     aExit=2
 fi
 
