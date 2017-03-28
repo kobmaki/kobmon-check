@@ -8,7 +8,7 @@ This check is for posix	filesystem.
 * Free inodes
 * Blocksize
 * Mountpoint check
-* Filesystem type
+* Filesystem type (TODO)
 
 ## Options
 
@@ -21,10 +21,9 @@ This check is for posix	filesystem.
 | -w | Warning in percent. Default is 10%. |
 | -c | Critical in percent. Default is 5%. |
 
-
 ## Use case
 
-TODO
+You want to check if a filesystem is a mount point.
 
 ## Examples
 
@@ -33,3 +32,10 @@ Test the home partition that it is a separate mountpoint. Set the warning on 28.
 ```
 check_kobmon_disku -p /home -x -w 28.5 -c 15
 ```
+## Requirement for check_kobmon_disku
+
+The check runs on linux. The check requires the command *df*, *stat*, *md5sum* in the search path. The checked path should be readable, otherwise a critical state is reported.
+
+## Time costs for running check_kobmon_disku
+
+The check is fast and run in milliseconds. The check could stock if a remote filesystem do not respond. E.g. a hard mounted NFS filesystem.
