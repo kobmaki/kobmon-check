@@ -7,113 +7,148 @@
 
 
 unset LANG
-CHECKNAME='EPING'
+aCHECKNAME='EPING'
+aCHECKFQN='check_kobmon_eping'
+aCHECKVERSION='0.9'
+
 # Some default parameters
-aHostIp=${aHostIp-localhost}
+aHostIp= #${aHostIp-localhost}
 aPackageCount=${aPackageCount-5}
 aPackageIntervall=${aPackageIntervall-0.2}
-aAction='check'
+aAction='help'
 
+#
 # function for debug output
+#
 decho (){
     if [ "${DEBUG}" != "" ]; then
-	echo $@
+	echo $@ 1>&2
     fi
 }
 
+# convert the output to pnp, TODO
 function output2pnp (){
     local aOutput=$1
-    aReturn="PNP unavailable"
+    local aReturn="PNP unavailable"
+    decho "|"${aReturn}
 }
 
+#
+# show the help
+#
 function showHelp(){
     # something
     cat <<EOF
-usage check_kobmon_eping [-h] [-H <hostname>] [-i <intervall>] [-w <warning percent>] [-c <critical percent>]
- -h -- Show this help
+usage check_kobmon_eping [-h] [-V] -H <hostname> [-i <intervall>] [-w <warning percent>] [-c <critical percent>] [-C <number of packages>]
+ -h -- show this help
+ -V -- show version
  -H -- required hostname or ip
- -i -- intervall for the ping checks
+ -i -- intervall for the ping checks in seconds, default 0.2 that is 200ms
+ -C -- package count, default 5
  -w -- percent of package for a warning
  -c -- percent of package lost for a critical
 EOF
 }
 
 # read options
-while getopts "::h:H:i:C::g(ateway)::w::c:" Option
+while getopts "::h::VH:i:C::w::c:" aOption
 do
-    case $Option in
-	h)
-	    decho "help"
-	    aAction='help'
-	    ;;
-	H) decho "option H for host   [OPTIND=${OPTIND}]";
-	   aHostIp=${OPTARG}
+    case ${aOption} in
+	h) aAction='help'
 	   ;;
+
+	V) aAction='version'
+	   ;;
+
+	H) aHostIp=${OPTARG}
+	   aAction='check'
+	   ;;
+
 	w) aWarnPer=${OPTARG}
 	   ;;
+
 	c) aCritPer=${OPTARG}
 	   ;;
+
 	C) aPackageCount=${OPTARG}
 	   decho "aPackageCount:"${aPackageCount}
 	   ;;
-	g) aGateway=${OPTARG}
-	   ;;
+
 	i) aPackageIntervall=${OPTARG}
-	    ;;
+	   ;;
+
 	*) CRITICAL=${CRITICAL}", UNSUPPORTER PARAMETER "${Option}
 	   ;;
+
     esac
 done
 
-
+#
+# run the ping check
+#
 function runCheck(){
-aD=`ping -c ${aPackageCount} -w 9 -i ${aPackageIntervall} ${aHostIp} 2>&1`
-aRet=$?
-aOut="???"
-aD=`echo ${aD} | sed s/".*--- "//g`
+    local aD=`ping -c ${aPackageCount} -w 9 -i ${aPackageIntervall} ${aHostIp} 2>&1`
+    local aRet=$?
+    local aOut="???"
+    local aD=`echo ${aD} | sed s/".*--- "//g`
 
-if [ ${aRet} -eq  1 ]; then
+    if [ ${aRet} -eq  1 ]; then
 # ping returns 1 if host not found, unreachable, error packages
-aRet=2;
-fi
+	aRet=2;
+    fi
 
 # OK, ping return 0, but maybe it contains error/duplicate package
-if [ ${aRet} -eq 0 ]; then
+    if [ ${aRet} -eq 0 ]; then
 
  # have package loss   
- [[ ! ${aD} =~ ' 0% packet loss' ]] && aRet=1
+	[[ ! ${aD} =~ ' 0% packet loss' ]] && aRet=1
 
  # have duplicate packages
- [[ ${aD} =~ ' duplicate' ]] && aRet=1
+	[[ ${aD} =~ ' duplicate' ]] && aRet=1
 
-fi
+    fi
 
 
-case ${aRet} in
-  0) aOut="OK ${aHostIp} - "${aD}
-  ;;
+    case ${aRet} in
+	0) aOut="OK ${aHostIp} - "${aD}
+	    ;;
 
-  1) aOut="WARNING ${aHostIp} - "${aD}
-    ;;
+	1) aOut="WARNING ${aHostIp} - "${aD}
+	    ;;
   
-  2) aOut="CRITICAL ${aHostIp} - "${aD}
-  
-   ;;
-  3) aOut="UNKNOWN ${aHostIp} - "${aD}
-    ;;
-  *) 
-    aOut="??? ${aHostIp} - "${aD}
-  ;;
-esac
-echo ${CHECKNAME}" "${aOut}
-exit ${aRet}
+	2) aOut="CRITICAL ${aHostIp} - "${aD}
+	    ;;
+
+	3) aOut="UNKNOWN ${aHostIp} - "${aD}
+	    ;;
+	*)
+	    aOut="??? ${aHostIp} - "${aD}
+	    ;;
+    esac
+
+    echo -n ${aCHECKNAME}" "${aOut}
+    # add PNP
+    output2pnp ${aOut}
+    echo
+    exit ${aRet}
 }
 
+#
+#
+#
 
+function showVersion() {
+echo "${aCHECKFQN} ${aCHECKVERSION} (kobmon-check 0.1)"
+}
 case ${aAction} in
     help)
 	showHelp
 	;;
+
+    version)
+	showVersion
+	;;
+
     check)
 	runCheck
 	;;
