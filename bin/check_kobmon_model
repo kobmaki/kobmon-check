@@ -3,31 +3,33 @@
 # Project: kobmon-check, https://github.com/kobmaki/kobmon-check/
 # Version: 1.0
 # Info: checks the machine type
-# 
+#
 
 aOK=""
 aWARING=""
 aCRITICAL=""
 aUNKNOWN=""
+
 aCHECKNAME="MODEL"
 aCHECKFQN="check_kobmon_model"
 aCHECKVERSION="0.1"
 
+# Default unkown machine
 aMACHINEFOUND="UNKNOWN"
 
 function decho (){
-if [ "${DEBUG}" != "" ]; then
-    echo $@ 1>&2
-fi
+    if [ "${DEBUG}" != "" ]; then
+	echo $@ 1>&2
+    fi
 }
 
 
 #set -x
 aMACHINE_ANY="ANY"
-aPHP_ANY="0"
+aPNP_ANY="0"
 
 aMACHINE_UNKNOWN="UNKOWN"
-aPHP_UNKNOWN="1"
+aPNP_UNKNOWN="1"
 
 aMACHINE_HP="HP"
 aPNP_HP="2"
@@ -36,7 +38,7 @@ aMACHINE_DELL="DELL"
 aPNP_DELL="3"
 
 aMACHINE_VMWARE="VMWARE"
-aPNP_MVMWARE="4"
+aPNP_VMWARE="4"
 
 aMACHINE_IBM="IBM"
 aPNP_IBM="5"
@@ -53,9 +55,10 @@ aPNP_XEN="8"
 aMACHINE_DOCKER="DOCKER"
 aPNP_DOCKER="9"
 
-# what do we search for default?
+# what do we search for as default?
 aMACHINE=""${aMACHINE_ANY}
 
+# no help wanted
 aHELP=""
 
 while getopts "Vt:h" Option
@@ -79,7 +82,9 @@ do
     esac
 done
 
+#
 aLSPCI="/sbin/lspci"
+
 # Path to DMI vendor info
 aDMISYSVENDOR="/sys/class/dmi/id/sys_vendor"
 aDMIVENDOR="" # Default empty
@@ -93,11 +98,11 @@ which lspci 1>/dev/null 2> /dev/null && aLSPCI=""`which lspci`
 
 
 if [ "${aHELP}" != "" ]; then
-echo "help: try "${0}" [-t TYPE] [-h] [-V]"
-echo "-t define the type from "${aMACHINE_ANY}"|"${aMACHINE_HP}"|"${aMACHINE_DELL}"|"${aMACHINE_VMWARE}"|"${aMACHINE_XEN}"|"${aMACHINE_IBM}"|"${aMACHINE_CISCO}"|"${aMACHINE_FUJITSU}"|"${aMACHINE_DOCKER}
-echo "-h shows help"
-echo "-V shows the version"
-exit 0
+    echo "help: usage "${0}" [-t TYPE] [-h] [-V]"
+    echo "-t define the type from "${aMACHINE_ANY}"|"${aMACHINE_HP}"|"${aMACHINE_DELL}"|"${aMACHINE_VMWARE}"|"${aMACHINE_XEN}"|"${aMACHINE_IBM}"|"${aMACHINE_CISCO}"|"${aMACHINE_FUJITSU}"|"${aMACHINE_DOCKER}
+    echo "-h shows help"
+    echo "-V shows the version"
+    exit 0
 fi
 
 # convert to upper case
@@ -120,31 +125,35 @@ function foundMachineExit() {
 
 function checkHP(){
 #  aHP=""`/sbin/lspci | grep -i "ilo"| wc -l`
-    if [ "${aDMIVENDOR}" == "${aMACHINE_HP}" ]; then return 1; fi
-    aHP=""`${aLSPCI} 2>/dev/null | grep -i "Hewlett-Packard Company Integrate"| wc -l`
-  
-  if [ $aHP -gt 0 ]; then
-      return 1
-  fi
+    if [ "${aDMIVENDOR}" == "${aMACHINE_HP}" ]; then
+	return 1;
+    fi
 
-  return 0
+    local aHP=""`${aLSPCI} 2>/dev/null | grep -i "Hewlett-Packard Company Integrate"| wc -l`
+
+    if [ $aHP -gt 0 ]; then
+	return 1
+    fi
+
+    return 0
 }
 
 
 function checkVMware() {
-	 aVmware=""`${aLSPCI} 2>/dev/null | grep -i "vmware svg"| wc -l`
-	 if [ $aVmware -eq 0 ]; then 
-	     return 0
-	 fi
-	  return 1
+    aVmware=""`${aLSPCI} 2>/dev/null | grep -i "vmware svg"| wc -l`
+    if [ $aVmware -eq 0 ]; then
+	return 0
+    fi
+
+    return 1
 }
 
 function checkXEN() {
-         if [ "${aHYPERVISOR}" == "${aMACHINE_XEN}" ]; then 
-	     return 1; 
-	 fi
+    if [ "${aHYPERVISOR}" == "${aMACHINE_XEN}" ]; then
+	return 1;
+    fi
 
-         return 0
+    return 0
 }
 
 function checkIBM() {
@@ -176,7 +185,7 @@ function checkDELL() {
 
 function checkCISCO() {
        decho "in checkCISCO"
-       aCisco=""`${aLSPCI} 2>/dev/null| grep -i 'Cisco Systems Inc' | wc -l ` 
+       aCisco=""`${aLSPCI} 2>/dev/null| grep -i 'Cisco Systems Inc' | wc -l `
        if [ $aCisco -gt 0 ]; then
             return 1;
         fi
@@ -196,7 +205,7 @@ function checkDOCKER() {
 #check HP
 checkHP
 if [[ $?  -eq 1 ]]; then
-   aMACHINEFOUND=${aMACHINE_HP} 
+   aMACHINEFOUND=${aMACHINE_HP}
 fi
 # check VMware
 checkVMware
@@ -251,12 +260,12 @@ decho "aMACHINEFOUND:"${aMACHINEFOUND}
 decho "aMACHINESEARCH:"${aMACHINESEARCH}
 
 if [ "${aMACHINEFOUND}" != "${aMACHINESEARCH}" ]; then
-    aCRITICAL="CRITICAL "
+    aCRITICAL="CRITICAL"
 fi
 
 # fix if any machine was search for
 if [ "${aMACHINESEARCH}" == "${aMACHINE_ANY}" ]; then
-    aCRITICAL="" 
+    aCRITICAL=""
 fi
 
 
