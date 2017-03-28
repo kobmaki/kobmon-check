@@ -32,7 +32,7 @@ aIP=
 aDOMAIN=
 aHostnameShort=
 
-# read options                                                                                                          
+# read options                                                                                                     
 while getopts "Vhi:sd:" Option
 do
   case $Option in
@@ -90,7 +90,7 @@ aExit=0
 # fetch some infos for hostname short
 aHostnameShort=$(hostname -s)
 
-# hostname as domain 
+# hostname as domain
 aHostnameDomain=$(hostname -d)
 
 # ip for the hostname
@@ -120,13 +120,13 @@ if expr  match ${aHostnameIp}  '127.' >/dev/null 2>/dev/null ; then
     aCRITICAL=${aCRITICAL}" IP starts with 127"
 fi
 
-# If a waring situation happens, then output the warning 
+# If a waring situation happens, then output the warning
 if [[ "${aCRITICAL}" == "" && "${aWARNING}" != "" ]]; then
     echo -n "${aCHECKNAME} WARNING - "${aWARNING}
     aExit=1
 fi
 
-# Now we write out 
+# Now we write out
 if [ "${aCRITICAL}" != "" ]; then
     echo -n "${aCHECKNAME} CRITICAL - "${aCRITICAL}
     aExit=2

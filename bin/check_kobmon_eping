@@ -100,7 +100,7 @@ function runCheck(){
 # OK, ping return 0, but maybe it contains error/duplicate package
     if [ ${aRet} -eq 0 ]; then
 
- # have package loss   
+ # have package loss
 	[[ ! ${aD} =~ ' 0% packet loss' ]] && aRet=1
 
  # have duplicate packages
@@ -115,7 +115,7 @@ function runCheck(){
 
 	1) aOut="WARNING ${aHostIp} - "${aD}
 	    ;;
-  
+
 	2) aOut="CRITICAL ${aHostIp} - "${aD}
 	    ;;
 

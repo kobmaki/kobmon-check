@@ -133,7 +133,7 @@ fi
 decho "aEXP:"`expr index "${aPID}" ' ' `":"
 #`expr match "${aPID}" " "`
 #${aPID/' '/}
-#`expr index "${aPID}" " "` 
+#`expr index "${aPID}" " "`
 # if pid empty, no process identify
 if [ "" == "${aPID}" ]; then
     echo "PRG CRITICAL - nothing running with user/command/filter/parentpid  "${aUSER}"/"${aCOMMAND}"/"${aFILTER}"/"${aPPID};
@@ -141,7 +141,7 @@ if [ "" == "${aPID}" ]; then
 fi
 
 # now checking if more a process match the user/command/filter
-# 
+#
 
 if [  `expr index "${aPID}" " "` != "0" ]; then
    echo "PRG CRITICAL - `echo ${aPID}| tr ' ' '\n' | wc -l` running - user/command/filter/parentpid  "${aUSER}"/"${aCOMMAND}"/"${aFILTER}"/"${aPPID}" - pids "${aPID}
@@ -173,10 +173,10 @@ if [ "${aPROCESS_COUNT_COMMAND}" == "1" ]; then
     decho "aPCC:'"${aPROCESS_COUNT_CHILD}"'"
 
     if [ "${aPROCESS_COUNT_CHILD}" == "" ]; then
-# fix, as we do not have threads 
+# fix, as we do not have threads
 	aPROCESS_COUNT_CHILD=${aPROCESS_COUNT_COMMAND}
 	echo >/dev/null
-    fi 
+    fi
 fi
 
 aUNAME_R="`uname -r`"

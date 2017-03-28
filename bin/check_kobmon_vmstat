@@ -2,13 +2,13 @@
 # Author: Uwe Ebel
 # Version: 0.9
 # Project: kobmon-check
-# Info: 
+# Info:
 # Example:
 #
 # check_kobmon_vmstat => vmstat 10 2
 # check_kobmon_vmstat --DELAY=15 => vmstat 15 2
 #
-# TODO: options, PNP 
+# TODO: options, PNP
 
 function decho (){
 if [ "${DEBUG}" != "" ]; then
@@ -100,7 +100,7 @@ echo ""
 echo "Examples:"
 echo "           ${0} --WARNidle=30 --CRITidle=10"
 echo "will give a a warning when idle is below 30 percent"
-echo "and a critical below 10"  
+echo "and a critical below 10"
 exit 10
 fi
 
@@ -111,7 +111,7 @@ if  [ $DEBUG ] ; then
     echo "DELAY="${DELAY};
     echo "HELP"=${HELP}
 fi
- 
+
 # position of st(olen)
 aR[17]=0
 j=0
@@ -193,10 +193,10 @@ if [ "${CRITICAL}" ]; then
 fi
 
 case ${aExitCode} in
-1) 
+1)
 	echo -n "WARNING VMSTAT -"${WARNING}" - "
 	;;
-2) 
+2)
 	echo -n "CRITICAL VMSTAT -"${CRITICAL}" - "
 
 	;;
@@ -204,7 +204,7 @@ case ${aExitCode} in
 	echo -n "OK VMSTAT - "
 
 ;;
-esac 
+esac
 
 
 echo ${aUsSyIdWaSt}"|krn:vmstat="${aReturn}

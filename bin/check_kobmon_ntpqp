@@ -1,8 +1,8 @@
 #!/bin/bash
 # Version: 0.1
-# Autor: Uwe Ebel (kobmaki @ aol com) 
+# Autor: Uwe Ebel (kobmaki @ aol com)
 # Info: Check the ntp-Service if a time-server is available and used
-# 
+#
 # REQUIRE CODE AND DOC IMPROVEMENT
 
 NTPQ=/usr/sbin/ntpq
@@ -27,7 +27,7 @@ aReturn=`${NTPQ} -pn 2>/dev/null |  grep -v "refid" | grep -v "=="| head -2| tai
 NTPPOS=${1}
 aReturn=`${NTPQ} -pn 2>/dev/null|  grep -v "refid" | grep -v "=="| head -3 | tail -1|xargs`
 ;;
-3) 
+3)
 NTPPOS=${1}
 aReturn=`${NTPQ} -pn 2>/dev/null| grep -v "refid" | grep -v "=="| head -4 | tail -1|xargs`
 ;;
@@ -42,7 +42,7 @@ aReturn=`${NTPQ} -pn 2>/dev/null| grep -v "refid" | grep -v "=="| head -6 | tail
 
 ;;
 
-6) 
+6)
 NTPPOS=${1}
 aReturn=`${NTPQ} -pn 2>/dev/null | grep -v "refid" | grep -v "=="| head -7 | tail -1|xargs`
 
@@ -52,8 +52,8 @@ t)
 NTPPOS=${1}
 aReturn="*192.168.201.221  192.168.201.220   4 u  64m  68m  377    0.952   16.618   0.740"
 ;;
- *) 
-# OK, so we watch the used time 
+ *)
+# OK, so we watch the used time
 NTPPOS=1
 aReturn=`${NTPQ} -pn 2>/dev/null|  grep "^*"| head -1`
 #     remote           refid      st t when poll reach   delay   offset  jitter
@@ -90,7 +90,7 @@ fi
 #aCOMMAND="${NTPQ} ${NTPQOPTION} ${GREPFILTER}"
 #aReturn=`${aCOMMAND}`
 #aReturn=`${NTPQ} -pn | tail -1|head -1`
-#aReturn=`${NTPQ} -pn | tail -${NTTPPOS}| head -1"` 
+#aReturn=`${NTPQ} -pn | tail -${NTTPPOS}| head -1"`
 echo -n "NTPQ "
 
 
