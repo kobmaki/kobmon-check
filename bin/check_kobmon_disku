@@ -1,5 +1,4 @@
 #!/bin/bash
-#
 # Project: kobmon-check
 # Author: Uwe Ebel
 # Version: 1.0
@@ -36,18 +35,18 @@
 
 # helper function for DEBUG output
 function decho (){
-if [ "${DEBUG}" != "" ]; then
-    echo $@ 1>&2;
-fi
+    if [ "${DEBUG}" != "" ]; then
+	echo $@ 1>&2;
+    fi
 }
 
 #
 # show the help
 #
 function showhelp(){
-echo "STILL WIP! NO CORRECT PERFDATA"
-echo -ne "using: "$0" "
-cat <<EOF
+    echo "STILL WIP! NO CORRECT PERFDATA"
+    echo -ne "using: "$0" "
+    cat <<EOF
 -p /path/to/dir [-w <WARNING-IN-PERCENT>] [-c <CRITICAL-IN-PERCENT] [-h THIS-MESSAGE] [-x PATH-IS-MOUNTPOINT] [-s SNAPSHOTTECHNOLOGY]
 
 examples:
@@ -67,9 +66,9 @@ exit 1
 # little function to convert a number
 #
 function aConvertNumber100 (){
-    _Me=$1
-    _Me=${_Me}'00'
-    aPos=$(expr index ${_Me} . )
+    local _Me=$1
+    local _Me=${_Me}'00'
+    local aPos=$(expr index ${_Me} . )
 
     if [[ ! ${aPos} -eq 0 ]]; then
 	# add the 2 position
@@ -88,7 +87,7 @@ function aConvertNumber100 (){
 # 3 -> 00.03
 # 67 -> 00.67
 # 923 -> 09.23
-# 7812 -> 87.12
+# 7812 -> 78.12
 # above 9999
 # 2345123 -> 23.45123
 function aConvertDot (){
