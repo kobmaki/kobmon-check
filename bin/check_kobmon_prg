@@ -28,10 +28,10 @@ unset LANG
 
 # check if correct parameter given
 if [ $# -lt 2 ]; then
-echo "ERROR, missing arguments"
-echo "check_kobmon_prg --user=[username] --command=[command] --filter=[filter] --warn=[min:max] --critical=[min:max] --inkernel=[Y] --verbose=[verboselevel] --pid=[pidnumber] --ppid=[parentpidnumber]"
-echo "for example"
-echo "  check_kobmon_prg --user=nagios --command=java --filter=kobrrdnag-rrdspool"
+    echo "ERROR, missing arguments"
+    echo "check_kobmon_prg --user=[username] --command=[command] --filter=[filter] --warn=[min:max] --critical=[min:max] --inkernel=[Y] --verbose=[verboselevel] --pid=[pidnumber] --ppid=[parentpidnumber]"
+    echo "for example"
+    echo "  check_kobmon_prg --user=nagios --command=java --filter=kobrrdnag-rrdspool"
 exit 255
 fi
 
@@ -86,10 +86,9 @@ fi
 
 # check to make the filter the command
 if [ $# -gt 2 ]; then
-aFILTER=$3
+    aFILTER=$3
 fi
 
-#set -x
 
 aWARNING=""
 aCRITICAL=""
@@ -111,24 +110,24 @@ decho "aPID is:"${aPID}
 
 # 2nd try exakt but with name  like oracle pmon instance
 if [ "" == "${aPID}" ]; then
-aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x ${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+    aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x ${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
 fi
 
 # 3nd try maybe fullpath, like sshd on debian 8
 if [ "" == "${aPID}" ]; then
-aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x .*/${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+    aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x .*/${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
 fi
 
 # 3rd try exakt but with name
 if [ "" == "${aPID}" ]; then
-aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x ${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
+    aPID=""`ps  -o "%pY %a" h -p \`pgrep -P ${aPPID} -u ${aUSER} -f -x ${aCOMMAND}\` 2>/dev/null | tr -s "[:blank:]" " "  | grep "${aFILTER}"| sed -e s/'Y.*'//g | tr -s "\n" " "| sed -e s/' $'//g -e s/'^ '//g`
 fi
 
 #exit
 # only for WIP
 
 if [ $arg_pid ]; then
-aPID=$arg_pid
+    aPID=$arg_pid
 fi
 
 decho "aEXP:"`expr index "${aPID}" ' ' `":"
@@ -168,17 +167,16 @@ aTHREADS="`cat /proc/${aPID}/status | egrep '^Threads:' |  sed -e s/'.*:'/' '/g 
 
 
 if [ "${aPROCESS_COUNT_COMMAND}" == "1" ]; then
-decho "looking for thread"
+    decho "looking for thread"
 # maybe threads
-aPROCESS_COUNT_CHILD="`cat /proc/${aPID}/status | egrep '^Threads:' |  sed -e s/'.*:'/' '/g -e s/kb//gi | tr -d '[:blank:]'`"
-decho "aPCC:'"${aPROCESS_COUNT_CHILD}"'"
+    aPROCESS_COUNT_CHILD="`cat /proc/${aPID}/status | egrep '^Threads:' |  sed -e s/'.*:'/' '/g -e s/kb//gi | tr -d '[:blank:]'`"
+    decho "aPCC:'"${aPROCESS_COUNT_CHILD}"'"
 
-if [ "${aPROCESS_COUNT_CHILD}" == "" ]; then
+    if [ "${aPROCESS_COUNT_CHILD}" == "" ]; then
 # fix, as we do not have threads 
- aPROCESS_COUNT_CHILD=${aPROCESS_COUNT_COMMAND}
-echo >/dev/null
-fi 
-
+	aPROCESS_COUNT_CHILD=${aPROCESS_COUNT_COMMAND}
+	echo >/dev/null
+    fi 
 fi
 
 aUNAME_R="`uname -r`"
@@ -206,17 +204,17 @@ echo -n "PRG "
 aEXIT=0
 
 if [ "${aCRITICAL}" != "" ]; then
-echo -n "CRITICAL "${aCRITICAL}
-aEXIT=2
+    echo -n "CRITICAL "${aCRITICAL}
+    aEXIT=2
 fi
 
 if [ "${aWARNING}" != "" ]; then
-echo -n "WARNING "${aWARNING}
-aEXIT=1
+    echo -n "WARNING "${aWARNING}
+    aEXIT=1
 fi
 
 if [ "${aWARNING}${aCTITICAL}" == "" ]; then
-echo -n "OK "
+    echo -n "OK "
 fi
 
 echo -n "- running proc/thread,user,command,pid,ppid,filter = "${aPROCESS_COUNT_COMMAND}/${aTHREADS}", "${aUSER}", "${aCOMMAND}", "${aPID}", "${aPPID},","${aFILTER}
